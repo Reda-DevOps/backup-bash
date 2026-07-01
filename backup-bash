@@ -1,0 +1,115 @@
+#!/bin/bash
+
+# ================================================
+#   BACKUP AUTOMATIQUE - Script Bash
+#   Sauvegarde un dossier avec horodatage
+#   Conserve les 5 dernières versions
+#   Supprime les sauvegardes plus anciennes
+# ================================================
+
+# --- Configuration ---
+DOSSIER_SOURCE="$HOME/documents"        # Dossier à sauvegarder
+DOSSIER_BACKUP="$HOME/backups"          # Dossier de destination
+NB_BACKUPS_MAX=5                        # Nombre de sauvegardes à conserver
+LOG_FILE="$DOSSIER_BACKUP/backup.log"   # Fichier de log
+DATE=$(date "+%Y-%m-%d_%H-%M-%S")
+NOM_BACKUP="backup_$DATE.tar.gz"
+
+# ================================================
+# FONCTIONS
+# ================================================
+
+afficher_separateur() {
+    echo "================================================"
+}
+
+# --- Vérification du dossier source ---
+verifier_source() {
+    if [ ! -d "$DOSSIER_SOURCE" ]; then
+        echo "  [❌ ERREUR] Le dossier source n'existe pas : $DOSSIER_SOURCE"
+        echo "[$DATE] ERREUR - Dossier source introuvable : $DOSSIER_SOURCE" >> "$LOG_FILE"
+        exit 1
+    fi
+}
+
+# --- Création du dossier de backup si inexistant ---
+creer_dossier_backup() {
+    if [ ! -d "$DOSSIER_BACKUP" ]; then
+        mkdir -p "$DOSSIER_BACKUP"
+        echo "  [ℹ️  INFO] Dossier backup créé : $DOSSIER_BACKUP"
+    fi
+}
+
+# --- Réalisation de la sauvegarde ---
+faire_backup() {
+    echo "  [⏳ EN COURS] Sauvegarde de : $DOSSIER_SOURCE"
+    tar -czf "$DOSSIER_BACKUP/$NOM_BACKUP" -C "$(dirname "$DOSSIER_SOURCE")" "$(basename "$DOSSIER_SOURCE")" 2>/dev/null
+
+    if [ $? -eq 0 ]; then
+        TAILLE=$(du -sh "$DOSSIER_BACKUP/$NOM_BACKUP" | cut -f1)
+        echo "  [✅ OK]     Sauvegarde créée : $NOM_BACKUP ($TAILLE)"
+        echo "[$DATE] OK - Backup créé : $NOM_BACKUP ($TAILLE)" >> "$LOG_FILE"
+    else
+        echo "  [❌ ERREUR] La sauvegarde a échoué"
+        echo "[$DATE] ERREUR - Backup échoué : $NOM_BACKUP" >> "$LOG_FILE"
+        exit 1
+    fi
+}
+
+# --- Rotation : suppression des anciennes sauvegardes ---
+rotation_backups() {
+    NB_BACKUPS=$(ls -1 "$DOSSIER_BACKUP"/backup_*.tar.gz 2>/dev/null | wc -l)
+
+    if [ "$NB_BACKUPS" -gt "$NB_BACKUPS_MAX" ]; then
+        NB_A_SUPPRIMER=$((NB_BACKUPS - NB_BACKUPS_MAX))
+        echo "  [🗑️  ROTATION] Suppression de $NB_A_SUPPRIMER ancienne(s) sauvegarde(s)"
+
+        ls -1t "$DOSSIER_BACKUP"/backup_*.tar.gz | tail -n "$NB_A_SUPPRIMER" | while read FICHIER; do
+            rm "$FICHIER"
+            echo "  [🗑️  SUPPRIMÉ] $(basename "$FICHIER")"
+            echo "[$DATE] SUPPRIMÉ - $(basename "$FICHIER")" >> "$LOG_FILE"
+        done
+    else
+        echo "  [ℹ️  INFO]  $NB_BACKUPS sauvegarde(s) conservée(s) — aucune rotation nécessaire"
+    fi
+}
+
+# --- Affichage du résumé ---
+afficher_resume() {
+    echo ""
+    afficher_separateur
+    echo "  SAUVEGARDES DISPONIBLES"
+    afficher_separateur
+    ls -1t "$DOSSIER_BACKUP"/backup_*.tar.gz 2>/dev/null | while read FICHIER; do
+        TAILLE=$(du -sh "$FICHIER" | cut -f1)
+        echo "  📦 $(basename "$FICHIER") ($TAILLE)"
+    done
+    echo ""
+}
+
+# ================================================
+# EXÉCUTION PRINCIPALE
+# ================================================
+
+clear
+afficher_separateur
+echo "       BACKUP AUTOMATIQUE"
+echo "       $DATE"
+afficher_separateur
+echo ""
+echo "  Source  : $DOSSIER_SOURCE"
+echo "  Dest.   : $DOSSIER_BACKUP"
+echo "  Max     : $NB_BACKUPS_MAX sauvegardes"
+echo ""
+afficher_separateur
+
+verifier_source
+creer_dossier_backup
+faire_backup
+rotation_backups
+afficher_resume
+
+afficher_separateur
+echo "  Log disponible dans : $LOG_FILE"
+afficher_separateur
+echo ""
