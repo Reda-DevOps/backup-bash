@@ -46,7 +46,7 @@ NB_BACKUPS_MAX=5                   # Nombre de sauvegardes à conserver
   📦 backup_2025-06-06_11-00-00.tar.gz (1.8M)
 
 ## Contexte
-Projet réalisé dans le cadre de mon apprentissage DevOps.
+Projet réalisé dans le cadre de mon apprentissage.
 La sauvegarde avec rotation est une pratique standard en
 administration système pour protéger les données tout en
 maîtrisant l'espace disque utilisé.
